@@ -107,6 +107,7 @@ struct GameState
 {
 	int level{ 0 };
 	int score{ 0 };
+	int hiScore{ 0 };
 	int gemsRemaining;
 	float timeTaken{ 0.f };
 	MainGameState mainGameState = STATE_GAME_PLAY;

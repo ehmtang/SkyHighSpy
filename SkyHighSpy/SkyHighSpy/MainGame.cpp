@@ -9,34 +9,6 @@ constexpr int DISPLAY_HEIGHT{ 720 };
 constexpr int DISPLAY_SCALE{ 1 };
 constexpr int DISPLAY_WINDOW_INC{ 100 };
 
-/*
-* TODO:
-* - set boundaries so a meteor is not created within a radius of Agent8 when starting game & level
-* - add gem wobble NEED to fix it's initial rotation angle.
-* - game levels
-*	- create nMeteors and nAsteroids (l1 1m:3a, l2 2m:5a, l3 3m:7a ... )
-* - game menu (mute music, mute SFX, hide UI, exit button, restart, funky modes?)
-*
-* COMPLETE:
-* - game pause states
-* - refactor code from gameobject.active to struct data members
-* - particles and agent8 interactions
-* - fix random speed and direction
-* - AABB collisions
-* - meteor and agent8 interactions
-* - wrap objects to screen
-* - Convert rad to deg
-* - Increase window before wrapping the gameobjects back
-* - gems and asteroid interactions
-* - change attached asteroid to TYPE_ATTACHED
-* - asteroid and agent8 interactions
-* - If asteroid / jumped outside screen, create gem in random location else at the asteroid location
-* - asteroid and pieces interactions
-* - gems and agent8 interactions
-* - gems and blue ring interactions
-* - moved non data objects into MainGame.h header file
-*/
-
 GameState gameState;
 
 void MainGameEntry(PLAY_IGNORE_COMMAND_LINE)
@@ -62,7 +34,7 @@ bool MainGameUpdate(float elapsedTime)
 		EnterPausedState();
 		UpdateAndCreateLevel();
 		UpdateGamePlay(elapsedTime);
-		//RestartGame();
+		RestartGame();
 		break;
 	}
 	case STATE_GAME_PAUSE:
@@ -114,21 +86,29 @@ void UpdateAndCreateLevel()
 	}
 }
 
-//void RestartGame()
-//{
-//	GameObject& agentObj{ Play::GetGameObjectByType(TYPE_AGENT8) };
-//
-//	if (gameState.agent8.state == STATE_DEAD)
-//	{
-//		if (Play::KeyPressed(VK_SPACE))
-//		{
-//			gameState.agent8.state == STATE_FLY;
-//			gameState.agent8.active = true;
-//			UpdateAgent8Fly();
-//			agentObj.pos == Point2D {DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2};
-//		}
-//	}
-//}
+void RestartGame()
+{
+	GameObject& agentObj{ Play::GetGameObjectByType(TYPE_AGENT8) };
+
+	if (gameState.agent8.state == STATE_DEAD)
+	{
+		if (Play::KeyPressed(VK_SPACE))
+		{
+			gameState.level = 0;
+			gameState.score = 0;
+			Play::DestroyGameObjectsByType(TYPE_METEOR);
+			Play::DestroyGameObjectsByType(TYPE_ASTEROID);
+			Play::DestroyGameObjectsByType(TYPE_ATTACHED);
+			Play::DestroyGameObjectsByType(TYPE_GEM);
+			UpdateAndCreateLevel();
+			agentObj.pos = Point2D(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2);
+			agentObj.rotation = 0;
+			gameState.agent8.state = STATE_FLY;
+			gameState.agent8.active = true;
+			UpdateAgent8Fly();
+		}
+	}
+}
 
 void UpdateSpriteOrigins()
 {
@@ -370,6 +350,8 @@ void UpdateScore(float& elapsedTime)
 		else
 			gameState.score -= elapsedTime;
 		gameState.gemsRemaining = asteroidIds.size() + gemIds.size() + attachedIds.size();
+		if (gameState.hiScore < gameState.score)
+			gameState.hiScore = gameState.score;
 		break;
 	}
 	default:
@@ -497,8 +479,20 @@ void DrawBlueRing(float& elapsedTime)
 void DrawGUI()
 {
 	Play::DrawFontText("64px", "Gems Remaining: " + std::to_string(gameState.gemsRemaining), Point2D(50, 100), Play::LEFT);
-	Play::DrawFontText("64px", "Level: " + std::to_string(gameState.level), Point2D(DISPLAY_WIDTH / 2, 100), Play::CENTRE);
-	Play::DrawFontText("64px", "High Score: " + std::to_string(gameState.score), Point2D(DISPLAY_WIDTH - 50, 100), Play::RIGHT);
+	
+	if (gameState.level == 0)
+		Play::DrawFontText("64px", "Level: 1", Point2D(DISPLAY_WIDTH / 2, 100), Play::CENTRE);
+	else
+		Play::DrawFontText("64px", "Level: " + std::to_string(gameState.level), Point2D(DISPLAY_WIDTH / 2, 100), Play::CENTRE);
+	
+	Play::DrawFontText("64px", "High Score: " + std::to_string(gameState.hiScore), Point2D(DISPLAY_WIDTH - 50, 100), Play::RIGHT);
+	Play::DrawFontText("64px", "Score: " + std::to_string(gameState.score), Point2D(DISPLAY_WIDTH - 50, 150), Play::RIGHT);
+
+	if (gameState.agent8.state == STATE_DEAD)
+	{
+		Play::DrawFontText("105px", "GAME OVER", Point2D(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2), Play::CENTRE);
+		Play::DrawFontText("64px", "Press SPACE to restart", Point2D(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT - 30), Play::CENTRE);
+	}
 }
 
 void CreateAgent8()
